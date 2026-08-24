@@ -1,0 +1,27 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{8A6F2C54-E9D7-4BC4-91DB-2EC502AB9F7E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sunshine", "src\Sunshine\Sunshine.csproj", "{F4BFACED-F19B-4D8F-951F-8745F37DB086}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F4BFACED-F19B-4D8F-951F-8745F37DB086}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4BFACED-F19B-4D8F-951F-8745F37DB086}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4BFACED-F19B-4D8F-951F-8745F37DB086}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4BFACED-F19B-4D8F-951F-8745F37DB086}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F4BFACED-F19B-4D8F-951F-8745F37DB086} = {8A6F2C54-E9D7-4BC4-91DB-2EC502AB9F7E}
+	EndGlobalSection
+EndGlobal
