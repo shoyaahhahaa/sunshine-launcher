@@ -1,4 +1,5 @@
 # Sunshine
+<img width="583" height="608" alt="image" src="https://github.com/user-attachments/assets/999c992a-5cbb-46c7-854d-a481f69290be" />
 
 A small Windows Minecraft launcher focused on fast startup, low idle usage, and a clean
 dark/transparent UI.
