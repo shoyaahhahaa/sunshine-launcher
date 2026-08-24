@@ -6,26 +6,38 @@ dark/transparent UI.
 
 ## Quick Launch Guide
 
-### 1. Install what you need
+### Method 1: Download and run the ZIP
 
 - Windows 10 or 11
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
 - Minecraft already installed once through the official launcher
 - Java installed or available from Minecraft's bundled runtime
 
-### 2. Open the project folder
+1. Download `sunshine2.zip` from this repository.
+2. Extract the ZIP file.
+3. Open the extracted folder.
+4. Run this file:
+
+```text
+sunshine2\src\Sunshine\bin\Debug\net8.0-windows\Sunshine.exe
+```
+
+### Method 2: Build and run from source
+
+Install the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0), then open the
+project folder:
 
 ```powershell
 cd path\to\sunshine2
 ```
 
-### 3. Build the launcher
+Build the launcher:
 
 ```powershell
 dotnet build
 ```
 
-### 4. Run Sunshine
+Run Sunshine:
 
 ```powershell
 dotnet run --project src/Sunshine/Sunshine.csproj
@@ -37,7 +49,7 @@ You can also run the built executable after building:
 src\Sunshine\bin\Debug\net8.0-windows\Sunshine.exe
 ```
 
-### 5. Launch Minecraft
+### Launch Minecraft
 
 1. Enter a username.
 2. Pick one of your installed Minecraft versions.
