@@ -33,7 +33,7 @@ public sealed class GameLauncher
         _versionResolver = new VersionResolver(minecraftDir);
     }
 
-    public async Task<LaunchResult> LaunchAsync(LaunchProfile profile, Action<string>? onStatus = null)
+    public async Task<LaunchResult> LaunchAsync(LaunchProfile profile, LaunchIdentity identity, Action<string>? onStatus = null)
     {
         try
         {
@@ -41,7 +41,10 @@ public sealed class GameLauncher
             var resolved = _versionResolver.Resolve(profile.VersionId);
 
             var librariesDir = Path.Combine(_minecraftDir, "libraries");
-            var (classpathLibs, nativeLibs) = LibraryResolver.Resolve(resolved.Libraries, librariesDir);
+            var (classpathLibs, nativeLibs, missingLibs) = LibraryResolver.Resolve(resolved.Libraries, librariesDir);
+            if (missingLibs.Count > 0)
+                return Fail($"{missingLibs.Count} library file(s) missing, e.g. {missingLibs[0]}. " +
+                            "Launch this version once in the launcher that installed it to download them.");
 
             onStatus?.Invoke("Locating Java...");
             var javaExe = JavaLocator.Find(_minecraftDir, resolved.JavaVersion);
@@ -56,25 +59,28 @@ public sealed class GameLauncher
             var classpath = string.Join(';',
                 classpathLibs.Select(l => l.JarPath).Append(resolved.ClientJarPath));
 
-            var uuid = OfflineAuth.OfflineUuid(profile.Username);
-
             var placeholders = new Dictionary<string, string>
             {
-                ["auth_player_name"] = profile.Username,
+                ["auth_player_name"] = identity.Username,
                 ["version_name"] = resolved.Id,
                 ["game_directory"] = _minecraftDir,
                 ["assets_root"] = Path.Combine(_minecraftDir, "assets"),
                 ["assets_index_name"] = resolved.AssetIndexId ?? "legacy",
-                ["auth_uuid"] = uuid.ToString(),
-                ["auth_access_token"] = "0",
-                ["clientid"] = "",
-                ["auth_xuid"] = "",
-                ["user_type"] = "legacy",
+                ["game_assets"] = Path.Combine(_minecraftDir, "assets", "virtual", resolved.AssetIndexId ?? "legacy"),
+                ["auth_uuid"] = identity.Uuid,
+                ["auth_access_token"] = identity.AccessToken,
+                ["auth_session"] = identity.UserType == "msa" ? $"token:{identity.AccessToken}:{identity.Uuid}" : identity.AccessToken,
+                ["clientid"] = identity.ClientId,
+                ["auth_xuid"] = identity.Xuid,
+                ["user_type"] = identity.UserType,
+                ["user_properties"] = "{}",
                 ["version_type"] = resolved.VersionType ?? "release",
                 ["natives_directory"] = nativesDir,
                 ["launcher_name"] = LauncherName,
                 ["launcher_version"] = LauncherVersion,
                 ["classpath"] = classpath,
+                ["classpath_separator"] = ";",
+                ["library_directory"] = librariesDir,
             };
 
             var jvmArgs = BuildJvmArgs(profile, nativesDir, resolved, placeholders);
@@ -100,23 +106,44 @@ public sealed class GameLauncher
             logWriter.WriteLine($"[Sunshine] java: {javaExe}");
             logWriter.WriteLine($"[Sunshine] mainClass: {resolved.MainClass}");
             logWriter.WriteLine($"[Sunshine] classpath entries: {classpathLibs.Count + 1}");
-            logWriter.WriteLine($"[Sunshine] args: {string.Join(' ', psi.ArgumentList)}");
+            // Never write the real access token to disk.
+            logWriter.WriteLine($"[Sunshine] args: {string.Join(' ', psi.ArgumentList.Select(a => a == identity.AccessToken && a.Length > 8 ? "<token>" : a))}");
+
+            // Output callbacks and Exited can race on thread-pool threads; writing to a disposed
+            // StreamWriter there would crash the launcher, so serialize access and drop late lines.
+            var logLock = new object();
+            var logClosed = false;
+            void WriteLog(string? line)
+            {
+                if (line == null) return;
+                lock (logLock) { if (!logClosed) logWriter.WriteLine(line); }
+            }
 
             onStatus?.Invoke("Starting Minecraft...");
             var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-            process.OutputDataReceived += (_, e) => { if (e.Data != null) logWriter.WriteLine(e.Data); };
-            process.ErrorDataReceived += (_, e) => { if (e.Data != null) logWriter.WriteLine(e.Data); };
-            process.Exited += (_, _) => { logWriter.Dispose(); TryDeleteDirectory(nativesDir); };
+            process.OutputDataReceived += (_, e) => WriteLog(e.Data);
+            process.ErrorDataReceived += (_, e) => WriteLog(e.Data);
+            process.Exited += (_, _) =>
+            {
+                // Let the async readers drain what's left before closing the log.
+                try { process.WaitForExit(); } catch { }
+                lock (logLock) { logClosed = true; logWriter.Dispose(); }
+                TryDeleteDirectory(nativesDir);
+            };
 
             if (!process.Start())
+            {
+                logWriter.Dispose();
                 return Fail("Failed to start the java process.");
+            }
 
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
             // Give it a moment: if it dies immediately, that's almost always a bad classpath/args.
-            var exitedEarly = await Task.WhenAny(process.WaitForExitAsync(), Task.Delay(3000)) == process.WaitForExitAsync();
-            if (exitedEarly && process.HasExited && process.ExitCode != 0)
+            var exitTask = process.WaitForExitAsync();
+            var exitedEarly = await Task.WhenAny(exitTask, Task.Delay(3000)) == exitTask;
+            if (exitedEarly && process.ExitCode != 0)
             {
                 return Fail($"Minecraft exited immediately (code {process.ExitCode}). See log: {logPath}", logPath);
             }
@@ -138,10 +165,7 @@ public sealed class GameLauncher
         {
             $"-Xms{profile.MinRamMb}M",
             $"-Xmx{profile.MaxRamMb}M",
-            $"-Djava.library.path={nativesDir}",
             "-Dfile.encoding=UTF-8",
-            $"-Dminecraft.launcher.brand={LauncherName}",
-            $"-Dminecraft.launcher.version={LauncherVersion}",
         };
 
         if (profile.PerformanceFlags)
@@ -169,15 +193,21 @@ public sealed class GameLauncher
             });
         }
 
-        if (resolved.JvmArguments.Count > 0)
-        {
-            // Modern version.json already includes "-cp" "${classpath}" in this array.
-            foreach (var token in ExtractTokens(resolved.JvmArguments))
-                args.Add(Substitute(token, placeholders));
-        }
-        else
+        var jsonTokens = ExtractTokens(resolved.JvmArguments).ToList();
+        if (jsonTokens.Count == 0)
         {
             // Very old (pre-1.13) version jsons have no "jvm" array - add the bare minimum ourselves.
+            args.Add($"-Djava.library.path={nativesDir}");
+            args.Add($"-Dminecraft.launcher.brand={LauncherName}");
+            args.Add($"-Dminecraft.launcher.version={LauncherVersion}");
+        }
+
+        foreach (var token in jsonTokens)
+            args.Add(Substitute(token, placeholders));
+
+        // Modern version.json includes "-cp" "${classpath}" itself; add it if this one doesn't.
+        if (!jsonTokens.Any(t => t.Contains("${classpath}")))
+        {
             args.Add("-cp");
             args.Add(placeholders["classpath"]);
         }
@@ -232,7 +262,7 @@ public sealed class GameLauncher
             }
             else if (el.ValueKind == JsonValueKind.Object)
             {
-                if (!el.TryGetProperty("rules", out var rulesEl) || RuleElementAllows(rulesEl))
+                if (!el.TryGetProperty("rules", out var rulesEl) || RuleEvaluator.Allows(rulesEl))
                 {
                     // Mojang's schema uses singular "value" (string or array); some third-party
                     // launchers (e.g. TLauncher) instead write plural "values" (always an array).
@@ -249,27 +279,6 @@ public sealed class GameLauncher
                 }
             }
         }
-    }
-
-    private static bool RuleElementAllows(JsonElement rulesEl)
-    {
-        if (rulesEl.ValueKind != JsonValueKind.Array)
-            return true;
-
-        bool allowed = false;
-        foreach (var rule in rulesEl.EnumerateArray())
-        {
-            bool osMatches = true;
-            if (rule.TryGetProperty("os", out var osEl) && osEl.TryGetProperty("name", out var nameEl))
-                osMatches = string.Equals(nameEl.GetString(), "windows", StringComparison.OrdinalIgnoreCase);
-
-            // Feature-gated tokens (custom resolution, demo, quick play) are never active.
-            bool featureMatches = !rule.TryGetProperty("features", out var featuresEl) || featuresEl.EnumerateObject().Count() == 0;
-
-            if (osMatches && featureMatches && rule.TryGetProperty("action", out var actionEl))
-                allowed = string.Equals(actionEl.GetString(), "allow", StringComparison.OrdinalIgnoreCase);
-        }
-        return allowed;
     }
 
     private static string Substitute(string token, Dictionary<string, string> placeholders)

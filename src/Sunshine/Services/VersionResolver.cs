@@ -77,7 +77,8 @@ public sealed class VersionResolver
         for (int i = chain.Count - 1; i >= 0; i--)
         {
             var v = chain[i];
-            libraries.AddRange(v.Libraries);
+            if (v.Libraries != null)
+                libraries.AddRange(v.Libraries);
 
             if (v.Arguments is { } argsElement && argsElement.ValueKind == JsonValueKind.Object)
             {

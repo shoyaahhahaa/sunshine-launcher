@@ -18,7 +18,7 @@ public sealed class VersionJson
 
     public JsonElement? Arguments { get; set; }
 
-    public List<LibraryEntry> Libraries { get; set; } = new();
+    public List<LibraryEntry>? Libraries { get; set; } = new();
 
     [JsonPropertyName("assetIndex")]
     public AssetIndexRef? AssetIndex { get; set; }
@@ -36,6 +36,9 @@ public sealed class LibraryEntry
     public string? Name { get; set; }
     public List<RuleEntry>? Rules { get; set; }
     public LibraryDownloads? Downloads { get; set; }
+
+    // TLauncher writes the artifact at the top level instead of under "downloads".
+    public ArtifactRef? Artifact { get; set; }
     public Dictionary<string, string>? Natives { get; set; }
 }
 
@@ -62,6 +65,13 @@ public sealed class OsRule
 {
     public string? Name { get; set; }
     public string? Arch { get; set; }
+    public VersionRangeRule? VersionRange { get; set; }
+}
+
+public sealed class VersionRangeRule
+{
+    public string? Min { get; set; }
+    public string? Max { get; set; }
 }
 
 public sealed class AssetIndexRef

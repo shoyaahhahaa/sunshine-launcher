@@ -15,4 +15,15 @@ public sealed class LaunchProfile
     // an account is added, instead of needing to be manually rebound (which previously
     // desynced WPF's collection view and crashed the app).
     public ObservableCollection<string> SavedAccounts { get; set; } = new();
+
+    public List<MicrosoftAccount> MicrosoftAccounts { get; set; } = new();
+
+    /// <summary>Profile id of the Microsoft account to launch with; null means offline.</summary>
+    public string? SelectedMicrosoftId { get; set; }
+
+    /// <summary>
+    /// Azure app (client) ID used for Microsoft sign-in. Must be a public-client app
+    /// approved by Mojang for the Minecraft API.
+    /// </summary>
+    public string MsaClientId { get; set; } = "";
 }

@@ -52,34 +52,58 @@
                 <TextBlock Text="VERSION" Style="{StaticResource LabelText}" Margin="2,10,0,4"/>
                 <ComboBox x:Name="VersionComboBox" Height="36"/>
 
-                <TextBlock Text="USERNAME (OFFLINE)" Style="{StaticResource LabelText}" Margin="2,16,0,4"/>
+                <TextBlock x:Name="AccountLabel" Text="USERNAME (OFFLINE)" Style="{StaticResource LabelText}" Margin="2,16,0,4"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="8"/>
-                        <ColumnDefinition Width="48"/>
-                        <ColumnDefinition Width="8"/>
-                        <ColumnDefinition Width="48"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="44"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="44"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="44"/>
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="UsernameTextBox" Grid.Column="0" Height="48" FontSize="16" MaxLength="16"/>
-                    <Button x:Name="AccountsDropdownButton" Grid.Column="2" Width="48" Height="48"
+                    <Button x:Name="AccountsDropdownButton" Grid.Column="2" Width="44" Height="48"
                             Content="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="12"
                             Style="{StaticResource TitleBarButton}" Click="AccountsDropdownButton_Click"
                             ToolTip="Saved accounts"/>
-                    <Button x:Name="AddAccountButton" Grid.Column="4" Width="48" Height="48"
+                    <Button x:Name="AddAccountButton" Grid.Column="4" Width="44" Height="48"
                             Content="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="14"
                             Style="{StaticResource TitleBarButton}" Click="AddAccountButton_Click"
-                            ToolTip="Save this name"/>
+                            ToolTip="Save this offline name"/>
+                    <Button x:Name="MicrosoftSignInButton" Grid.Column="6" Width="44" Height="48"
+                            Style="{StaticResource TitleBarButton}" Click="MicrosoftSignInButton_Click"
+                            ToolTip="Sign in with Microsoft">
+                        <Grid Width="16" Height="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="1.5"/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition Height="1.5"/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            <Rectangle Grid.Row="0" Grid.Column="0" Fill="#F25022"/>
+                            <Rectangle Grid.Row="0" Grid.Column="2" Fill="#7FBA00"/>
+                            <Rectangle Grid.Row="2" Grid.Column="0" Fill="#00A4EF"/>
+                            <Rectangle Grid.Row="2" Grid.Column="2" Fill="#FFB900"/>
+                        </Grid>
+                    </Button>
                     <Popup x:Name="AccountsPopup" PlacementTarget="{Binding ElementName=UsernameTextBox}"
                            Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
-                        <Border Background="#6618161F" BorderBrush="{StaticResource FieldBorderBrush}"
-                                BorderThickness="1" CornerRadius="8" Margin="0,4,0,0" MinWidth="220">
+                        <Border Background="#E618161F" BorderBrush="{StaticResource FieldBorderBrush}"
+                                BorderThickness="1" CornerRadius="8" Margin="0,4,0,0" MinWidth="260">
                             <ListBox x:Name="AccountsListBox" Background="Transparent" BorderThickness="0"
-                                     Foreground="{StaticResource TextPrimaryBrush}" MaxHeight="180" Margin="4"
+                                     Foreground="{StaticResource TextPrimaryBrush}" MaxHeight="220" Margin="4"
+                                     HorizontalContentAlignment="Stretch"
                                      SelectionChanged="AccountsListBox_SelectionChanged">
                                 <ListBox.ItemContainerStyle>
                                     <Style TargetType="ListBoxItem">
-                                        <Setter Property="Padding" Value="10,8"/>
+                                        <Setter Property="Padding" Value="10,6"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="ListBoxItem">
@@ -96,6 +120,25 @@
                                         </Setter>
                                     </Style>
                                 </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="13"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Kind}" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextMutedBrush}" FontSize="11" Margin="8,0"/>
+                                            <Button Grid.Column="2" Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="9"
+                                                    Width="24" Height="24" Style="{StaticResource TitleBarButton}"
+                                                    Visibility="{Binding RemoveVisibility}" Tag="{Binding}"
+                                                    Click="RemoveAccountButton_Click" ToolTip="Remove"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
                             </ListBox>
                         </Border>
                     </Popup>

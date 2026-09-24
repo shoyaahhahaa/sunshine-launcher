@@ -51,7 +51,7 @@ src\Sunshine\bin\Debug\net8.0-windows\Sunshine.exe
 
 ### Launch Minecraft
 
-1. Enter a username.
+1. Enter a username (offline), or sign in with the Microsoft button (see below).
 2. Pick one of your installed Minecraft versions.
 3. Click launch.
 
@@ -77,11 +77,37 @@ Launch logs are saved here:
   files; it only launches what's already on disk.
 - Resolves `inheritsFrom` chains (e.g. a Fabric profile merged onto its vanilla parent).
 - Builds the java classpath/JVM args/game args from the version JSON and launches it directly.
-- Offline accounts only: username -> deterministic offline UUID (same scheme vanilla
-  Minecraft uses for `OfflinePlayer:<name>`), no Microsoft auth involved.
+- Offline accounts: username -> deterministic offline UUID (same scheme vanilla
+  Minecraft uses for `OfflinePlayer:<name>`).
+- Microsoft accounts: official sign-in (Microsoft -> Xbox Live -> Minecraft services), so
+  you can join online-mode servers with your real profile and skin.
 - Optional G1GC-tuned JVM flags for smoother frame times.
 - Exits itself right after the game starts (toggleable) so it isn't sitting in memory while
   you play.
+
+## Microsoft sign-in setup
+
+Microsoft login uses the official device-code flow: click the four-square Microsoft button,
+a browser opens at microsoft.com/link, and the code is copied to your clipboard. Paste it,
+sign in, and Sunshine picks up your Minecraft profile. Tokens are encrypted with Windows
+DPAPI (only your Windows user can read them) and refreshed automatically at launch.
+
+Every launcher needs its own Azure app registration to do this:
+
+1. In the [Azure portal](https://portal.azure.com) go to **App registrations -> New
+   registration**. Supported account types: **Personal Microsoft accounts only**.
+2. Under **Authentication**, set **Allow public client flows** to **Yes**.
+3. Copy the **Application (client) ID**.
+4. Mojang must approve new apps for the Minecraft API. Submit the client ID via
+   [Mojang's form](https://aka.ms/mce-reviewappid). Until it's approved, sign-in fails
+   with "Minecraft rejected this app's client ID".
+5. Put the client ID in `%LOCALAPPDATA%\Sunshine\settings.json`:
+
+```json
+"MsaClientId": "00000000-0000-0000-0000-000000000000"
+```
+
+Use the account dropdown to switch between Microsoft and offline accounts, or to remove one.
 
 ## Project layout
 
@@ -92,6 +118,8 @@ Launch logs are saved here:
   - `GameLauncher` - builds the full java command line and starts the process.
   - `JavaLocator` - finds a `javaw.exe` (Mojang-bundled runtime, `JAVA_HOME`, or `PATH`).
   - `OfflineAuth` - offline-mode UUID derivation.
+  - `MicrosoftAuth` - Microsoft/Xbox/Minecraft sign-in and token refresh.
+  - `RuleEvaluator` - evaluates version.json `rules` (OS, arch, Windows version, features).
   - `SettingsStore` - persists last-used profile to `%LOCALAPPDATA%\Sunshine\settings.json`.
 - `src/Sunshine/Interop/NativeMethods.cs` - Win11 dark title bar + acrylic backdrop via DWM.
 - `src/Sunshine/MainWindow.xaml(.cs)` - the whole UI (single window, custom chrome).

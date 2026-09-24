@@ -6,7 +6,7 @@ namespace Sunshine.Services;
 
 public sealed class SettingsStore
 {
-    private static readonly string FilePath = Path.Combine(
+    public static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Sunshine", "settings.json");
 
